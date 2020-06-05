@@ -1,0 +1,21 @@
+python run.py \
+  --model_type esim_single \
+  --train_file train_v1.json \
+  --validate_file dev_v1.json \
+  --predict_file test_v1.json \
+  --output_dir esim_single_outputs \
+  --max_seq_length 384 \
+  --do_train \
+  --do_eval \
+  --learning_rate 0.0004 \
+  --num_train_epochs 1.0 \
+  --do_lower_case \
+  --embeds_dim 300 \
+  --dropout 0.5 \
+  --overwrite_output_dir \
+  --save_steps 10000 \
+  --hidden_size 300 \
+  --linear_size 300 \
+  --per_gpu_train_batch_size 8 \
+  --no_cuda
+

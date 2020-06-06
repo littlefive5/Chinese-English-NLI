@@ -7,6 +7,9 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
+from gensim.test.utils import datapath, get_tmpfile
+from gensim.models import KeyedVectors
+from gensim.scripts.glove2word2vec import glove2word2vec
 class ESIM(nn.Module):
 
     def __init__(self,args,lan_1_vocab,lan_2_vocab):
@@ -37,7 +40,62 @@ class ESIM(nn.Module):
             nn.Linear(args.linear_size, 3),
             nn.Softmax(dim=-1)
         )
+        #self._init_embedding()
+        #self.apply(_init_esim_weights)
         #self.loss = nn.CrossEntropyLoss(reduction='none')
+    def _init_embedding(self):
+        chinese_model = KeyedVectors.load_word2vec_format('sgns.baidubaike.bigram-char')
+        chinese_vocab = ['[PAD]','[UNK]']
+        chinese_vocab.extend(chinese_model.index2word)
+        word_to_idx ={}
+        for index, item in enumerate(chinese_vocab):
+            word_to_idx[item] = index
+        idx_to_word = {v:k for k,v in word_to_idx.items()}
+        vocab_size = len(chinese_vocab)
+        weight = torch.zeros(vocab_size, self.embeds_dim)
+        for i in range(len(chinese_model.index2word)):
+            try:
+                word = chinese_model.index2word[i]
+                index = word_to_idx[word]
+                #print(index)
+            except:
+                continue
+            weight[index, :] = torch.from_numpy(chinese_model.get_vector(
+                idx_to_word[word_to_idx[chinese_model.index2word[i]]]))
+        weight[1,:] = torch.rand(1, self.embeds_dim)
+        self.embeds_1.from_pretrained(weight)
+
+        glove_file ='glove.6B.300d.txt'
+        # 输出文件
+        tmp_file = get_tmpfile("glove_word2vec.txt")
+
+        # call glove2word2vec script
+        # default way (through CLI): python -m gensim.scripts.glove2word2vec --input <glove_file> --output <w2v_file>
+        # 开始转换
+        
+        glove2word2vec(glove_file, tmp_file)
+
+        # 加载转化后的文件
+        english_model = KeyedVectors.load_word2vec_format(tmp_file)
+        english_vocab = ['[PAD]','[UNK]']
+        english_vocab.extend(english_model.index2word)
+        word_to_idx_2 ={}
+        for index, item in enumerate(english_vocab):
+            word_to_idx_2[item] = index
+        idx_to_word_2 = {v:k for k,v in word_to_idx_2.items()}
+        vocab_size_2 = len(english_vocab)
+        weight_2 = torch.zeros(vocab_size_2, self.embeds_dim)
+        for i in range(len(english_model.index2word)):
+            try:
+                word = english_model.index2word[i]
+                index = word_to_idx_2[word]
+                #print(index)
+            except:
+                continue
+            weight_2[index, :] = torch.from_numpy(english_model.get_vector(
+                idx_to_word_2[word_to_idx_2[english_model.index2word[i]]]))
+        weight_2[1,:] = torch.rand(1, self.embeds_dim)
+        self.embeds_2.from_pretrained(weight_2)
     # Code inspired from:
     # https://github.com/allenai/allennlp/blob/master/allennlp/nn/util.py.
     def replace_masked(self,tensor, mask, value):
@@ -89,8 +147,7 @@ class ESIM(nn.Module):
 
     def apply_multiple(self, v_ai, premises_mask):
         # input: batch_size * seq_len * (2 * hidden_size)
-        p1 = torch.sum(v_ai * premises_mask.unsqueeze(1)
-                                                .transpose(2, 1), dim=1)\
+        p1 = torch.sum(v_ai * premises_mask.unsqueeze(1).transpose(2, 1), dim=1) \
             / torch.sum(premises_mask, dim=1, keepdim=True)
         p2 , _ = self.replace_masked(v_ai, premises_mask, -1e7).max(dim=1)
         # p1 = F.avg_pool1d(x.transpose(1, 2), x.size(1)).squeeze(-1)
@@ -113,7 +170,7 @@ class ESIM(nn.Module):
         # embeds: batch_size * seq_len => batch_size * seq_len * embeds_dim
         x1 = self.bn_embeds(self.embeds_1(sent1).transpose(1, 2).contiguous()).transpose(1, 2)
         x2 = self.bn_embeds(self.embeds_2(sent2).transpose(1, 2).contiguous()).transpose(1, 2)
-
+        #print('x1.dtype',x1.dtype)
         # sort the sentence
         sorted_sent1_lengths, indices_1 = torch.sort(sent1_length, descending=True)
         _, desorted_indices_1 = torch.sort(indices_1, descending=False)
@@ -137,6 +194,7 @@ class ESIM(nn.Module):
         o2 = o2[desorted_indices_2]
         # print(o1.size())
         # print(o2.size())
+        #print('o1.dtype',o1.dtype)
         max_sent1_length = o1.size()[1]
         max_sent2_length = o2.size()[1]
         #we need to cut the mask to makesure mask2 is the same size with attention
@@ -170,6 +228,7 @@ class ESIM(nn.Module):
         # Aggregate
         # input: batch_size * seq_len * (2 * hidden_size)
         # output: batch_size * (4 * hidden_size)
+        #print('input_a_mask.dtype',input_a_mask.dtype)
         q1_rep = self.apply_multiple(q1_compose,input_a_mask)
         q2_rep = self.apply_multiple(q2_compose,input_b_mask)
         #print(q1_rep)
@@ -212,6 +271,7 @@ class ESIM2(nn.Module):
             nn.Linear(args.linear_size, 3),
             nn.Softmax(dim=-1)
         )
+        #self.apply(_init_esim_weights)
         #self.loss = nn.CrossEntropyLoss(reduction='none')
     def soft_attention_align(self, x1, x2, mask1,mask2):
         '''
@@ -351,3 +411,28 @@ class ESIM2(nn.Module):
         loss_fct = CrossEntropyLoss()
         loss = loss_fct(similarity.view(-1,3), labels.view(-1))
         return loss, similarity
+
+
+def _init_esim_weights(module):
+    """
+    Initialise the weights of the ESIM model.
+    """
+    if isinstance(module, nn.Linear):
+        nn.init.xavier_uniform_(module.weight.data)
+        nn.init.constant_(module.bias.data, 0.0)
+
+    elif isinstance(module, nn.LSTM):
+        nn.init.xavier_uniform_(module.weight_ih_l0.data)
+        nn.init.orthogonal_(module.weight_hh_l0.data)
+        nn.init.constant_(module.bias_ih_l0.data, 0.0)
+        nn.init.constant_(module.bias_hh_l0.data, 0.0)
+        hidden_size = module.bias_hh_l0.data.shape[0] // 4
+        module.bias_hh_l0.data[hidden_size:(2*hidden_size)] = 1.0
+
+        if (module.bidirectional):
+            nn.init.xavier_uniform_(module.weight_ih_l0_reverse.data)
+            nn.init.orthogonal_(module.weight_hh_l0_reverse.data)
+            nn.init.constant_(module.bias_ih_l0_reverse.data, 0.0)
+            nn.init.constant_(module.bias_hh_l0_reverse.data, 0.0)
+            module.bias_hh_l0_reverse.data[hidden_size:(2*hidden_size)] = 1.0
+

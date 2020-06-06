@@ -33,12 +33,15 @@ from transformers import AdamW, get_linear_schedule_with_warmup
 from tqdm import tqdm, trange
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
+from tokenizer import BasicTokenizer
 logger = logging.getLogger(__name__)
 
 
-ChineseTokenizer =  BertTokenizer(vocab_file='bert-base-chinese-vocab.txt')
-EnglishTokenizer =  BertTokenizer(vocab_file='bert-base-uncased-vocab.txt',tokenize_chinese_chars=False)
-MultiTokenizer = BertTokenizer(vocab_file='bert-base-multilingual-uncased-vocab.txt')
+# ChineseTokenizer =  BertTokenizer(vocab_file='bert-base-chinese-vocab.txt')
+# EnglishTokenizer =  BertTokenizer(vocab_file='bert-base-uncased-vocab.txt',tokenize_chinese_chars=False)
+ChineseTokenizer =  BasicTokenizer(vocab_file='Chinese_vocab.txt',languages='Chinese')
+EnglishTokenizer =  BasicTokenizer(vocab_file='English_vocab.txt',languages='English')
+#MultiTokenizer = BertTokenizer(vocab_file='bert-base-multilingual-uncased-vocab.txt')
 MODEL_CLASSES = ['esim_single','esim_double']
 
 def set_seed(args):

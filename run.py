@@ -173,8 +173,8 @@ def train(args, train_dataset, model, tokenizer_a,tokenizer_b):
     return global_step, tr_loss / global_step
 
 
-def evaluate(args, model, tokenizer_a,tokenizer_b):
-    dataset, examples, features = load_and_cached_examples(args, tokenizer_a, tokenizer_b, evaluate=True, output_examples=True)
+def evaluate(args, model, tokenizer_a,tokenizer_b,is_double=True):
+    dataset, examples, features = load_and_cached_examples(args, tokenizer_a, tokenizer_b, evaluate=True, output_examples=True,is_double=is_double)
 
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -334,7 +334,7 @@ def main():
         model_file = os.path.join(args.output_dir, "model.pth")
         model = torch.load(model_file)
         model.to(args.device)
-        accuracy,confusion = evaluate(args, model, tokenizer_a, tokenizer_b)
+        accuracy,confusion = evaluate(args, model, tokenizer_a, tokenizer_b,is_double=is_double)
         print("accuracy:",accuracy)
         print(confusion)
 

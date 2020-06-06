@@ -27,9 +27,9 @@ The data format is json.
 
 ### Two ways to train the model.
 
-First, I use two $Bi-LSTM$ to encode the Chinese and English texts separately. Here I use the BertTokenizer to tokenize the two languages. I use 'Bert-for-Chinese-vocab' and 'Bert-uncased-vocab' to build the vocab.
+First, I use two Bi-LSTM to encode the Chinese and English texts separately. Here I use the BertTokenizer to tokenize the two languages. I use 'Bert-for-Chinese-vocab' and 'Bert-uncased-vocab' to build the vocab.
 
-Then I use the 'bert-multilingual-vocab' and just one $Bi-LSTM$ to encode both the Chinese and English texts.
+Then I use the 'bert-multilingual-vocab' and just one Bi-LSTM​ to encode both the Chinese and English texts.
 
 The performance is shown below.
 
@@ -42,7 +42,7 @@ The pretrained model achieves the following performance on the SNLI dataset:
 
 Precision for different types.
 
-##### One LSTM
+##### Two LSTM
 
 |               | precision | recall | F1   |
 | ------------- | --------- | ------ | ---- |
@@ -50,15 +50,13 @@ Precision for different types.
 | entailment    | 0.68      | 0.48   | 0.56 |
 | contradiction | 0.63      | 0.76   | 0.69 |
 
-##### Two LSTM
-
-##### 
+##### One LSTM
 
 |               | precision | recall | F1   |
 | ------------- | --------- | ------ | ---- |
 | right         | 0.85      | 0.97   | 0.90 |
-| entailment    | 0.67      | 0.66   | 0.64 |
-| contradiction | 0.79      | 0.61   | 0.68 |
+| entailment    | 0.67      | 0.66   | 0.66 |
+| contradiction | 0.79      | 0.61   | 0.69 |
 
 ### Train with glove and word2vec
 
